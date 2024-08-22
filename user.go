@@ -1,6 +1,9 @@
 package main
 
-import "net"
+import (
+	"net"
+	"strings"
+)
 
 type User struct {
 	Name string
@@ -11,7 +14,7 @@ type User struct {
 	server *Server
 }
 
-//创建一个用户的API
+// 创建一个用户的API
 func NewUser(conn net.Conn, server *Server) *User {
 	userAddr := conn.RemoteAddr().String()
 
@@ -28,7 +31,7 @@ func NewUser(conn net.Conn, server *Server) *User {
 	return user
 }
 
-//用户上线业务
+// 用户上线业务
 func (u *User) Online() {
 	//用户上线，将用户加入OnlineMap
 	u.server.mapLock.Lock()
@@ -39,7 +42,7 @@ func (u *User) Online() {
 	u.server.BroadCast(u, "online")
 }
 
-//用户下线业务
+// 用户下线业务
 func (u *User) Offline() {
 	//用户下线，将用户从OnlineMap中删除
 	u.server.mapLock.Lock()
@@ -50,12 +53,12 @@ func (u *User) Offline() {
 	u.server.BroadCast(u, "offline")
 }
 
-//向当前User对应的客户端发送消息
+// 向当前User对应的客户端发送消息
 func (u *User) sendMsg(msg string) {
 	u.conn.Write([]byte(msg))
 }
 
-//用户处理消息的业务
+// 用户处理消息的业务
 func (u *User) DoMessage(msg string) {
 	if msg == "who" {
 		//查询当前在线用户
@@ -65,13 +68,31 @@ func (u *User) DoMessage(msg string) {
 			u.sendMsg(onlineMsg)
 		}
 		u.server.mapLock.Unlock()
+	} else if len(msg) > 7 && msg[:7] == "rename|" {
+		//消息格式： rename|张三
+		newName := strings.Split(msg, "|")[1]
+		// newName := msg[7:]	//可以不使用split
+
+		//判断name是否存在
+		_, ok := u.server.OnlineMap[newName]
+		if ok {
+			u.sendMsg("The name has been used")
+		} else {
+			u.server.mapLock.Lock()
+			delete(u.server.OnlineMap, u.Name)
+			u.server.OnlineMap[newName] = u
+			u.server.mapLock.Unlock()
+
+			u.Name = newName
+			u.sendMsg("User name is updated: " + u.Name + "\n")
+		}
 	} else {
 		//将得到的消息广播
 		u.server.BroadCast(u, msg)
 	}
 }
 
-//监听当前User channel的方法，一旦有消息就发送给客户端
+// 监听当前User channel的方法，一旦有消息就发送给客户端
 func (u *User) ListenMessage() {
 	for {
 		msg := <-u.C
