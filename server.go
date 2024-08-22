@@ -98,10 +98,10 @@ func (s *Server) Handler(conn net.Conn) {
 			//当前用户活跃，应重置定时器
 			//不做任何事，为了激活select，更新下面的定时器
 
-		case <-time.After(time.Second * 10):
+		case <-time.After(time.Second * 100):
 			//已经超时
 			//将当前User强制关闭
-			user.sendMsg("You are fired!")
+			user.sendMsg("You are fired!\n")
 
 			//销毁使用的资源
 			close(user.C)

@@ -76,7 +76,7 @@ func (u *User) DoMessage(msg string) {
 		//判断name是否存在
 		_, ok := u.server.OnlineMap[newName]
 		if ok {
-			u.sendMsg("The name has been used")
+			u.sendMsg("The name has been used\n")
 		} else {
 			u.server.mapLock.Lock()
 			delete(u.server.OnlineMap, u.Name)
@@ -86,6 +86,29 @@ func (u *User) DoMessage(msg string) {
 			u.Name = newName
 			u.sendMsg("User name is updated: " + u.Name + "\n")
 		}
+	} else if len(msg) > 4 && msg[:3] == "to|" {
+		//消息格式： to|张三|消息内容
+
+		//1.获取用户名
+		remoteName := strings.Split(msg, "|")[1]
+		if remoteName == "" {
+			u.sendMsg("Message format is incorrect, please use \"to|jack|hello\" to send\n")
+		}
+
+		//2.根据用户名，获取对方User对象
+		remoteUser, ok := u.server.OnlineMap[remoteName]
+		if !ok {
+			u.sendMsg("Username is not exist\n")
+			return
+		}
+
+		//3.获取消息内容，通过User对象将消息发送过去
+		content := strings.Split(msg, "|")[2]
+		if content == "" {
+			u.sendMsg("No message, try again\n")
+			return
+		}
+		remoteUser.sendMsg(u.Name + "send:" + content + "\n")
 	} else {
 		//将得到的消息广播
 		u.server.BroadCast(u, msg)
