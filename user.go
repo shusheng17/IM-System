@@ -94,9 +94,16 @@ func (u *User) DoMessage(msg string) {
 
 // 监听当前User channel的方法，一旦有消息就发送给客户端
 func (u *User) ListenMessage() {
-	for {
-		msg := <-u.C
+	// for {
+	// 	msg := <-u.C
+	// 	u.conn.Write([]byte(msg + "\n"))
+	// }
 
-		u.conn.Write([]byte(msg + "\n"))
+	//当u.C通道关闭后，不在进行（用于解决强踢后cpu飙升）
+	for msg := range u.C {
+		_, err := u.conn.Write([]byte(msg + "\n"))
+		if err != nil {
+			panic(err)
+		}
 	}
 }
